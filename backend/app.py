@@ -7,6 +7,12 @@ import nltk
 from nltk.tokenize import word_tokenize
 import re
 import os
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
+from dotenv import load_dotenv
+load_dotenv()
 
 # Load the pre-trained withdrawal risk model
 model = joblib.load('rm.pkl')
@@ -38,8 +44,6 @@ ALERT_THRESHOLD = 15
 
 # Define feature names for the updated withdrawal risk predictor
 FEATURE_NAMES = ['HRV', 'Age', 'Gender', 'PreviousRelapses', 'COWS', 'OxygenLevel']
-
-app = Flask(__name__)
 
 # Function to detect trigger words and calculate scores
 def detect_trigger_words_and_score(text):
@@ -100,6 +104,7 @@ def predict():
     
     # Make a prediction using the loaded model
     risk_score = model.predict(features_df)[0]
+    print(risk_score)
     return jsonify({'risk_score': round(risk_score, 2)})
 
 # Route for chatbot interaction
@@ -108,7 +113,6 @@ def chat():
     user_input = request.json['message']
     detected_words, total_score = detect_trigger_words_and_score(user_input)
     response = generate_response(user_input, detected_words)
-    
     return jsonify({
         'response': response,
         'alert': total_score > ALERT_THRESHOLD
