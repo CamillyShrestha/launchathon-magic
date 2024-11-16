@@ -35,18 +35,24 @@ export default function Dashboard() {
 
   const predictRisk = async () => {
     setIsLoading(true);
-    // Simulating API call to Django backend
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Update with new random data for demonstration
-    setPatientData({
-      heartRate: Math.floor(Math.random() * (100 - 60) + 60),
-      bloodPressure: `${Math.floor(
-        Math.random() * (140 - 100) + 100
-      )}/${Math.floor(Math.random() * (90 - 60) + 60)}`,
-      oxygenLevel: Math.floor(Math.random() * (100 - 95) + 95),
-      temperature: Number((Math.random() * (37.5 - 36.0) + 36.0).toFixed(1)),
-      withdrawalRisk: Number((Math.random() * 0.5).toFixed(2)),
+    // API call to Flask backend
+    const response = await fetch("http://localhost:5000/predict_withdrawal_risk", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        heart_rate: patientData.heartRate,
+        blood_pressure: patientData.bloodPressure,
+        oxygen_level: patientData.oxygenLevel,
+        temperature: patientData.temperature,
+      }),
     });
+    const data = await response.json();
+    setPatientData((prevData) => ({
+      ...prevData,
+      withdrawalRisk: data.withdrawal_risk,
+    }));
     setIsLoading(false);
   };
 
@@ -57,36 +63,21 @@ export default function Dashboard() {
     setChatMessages((prevMessages) => [...prevMessages, newMessage]);
     setUserInput("");
 
-    // Simulating API call to LLM backend
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Simple mood analysis (replace with actual LLM integration)
-    const lowMoodWords = [
-      "depressed",
-      "dark",
-      "clouded",
-      "anxious",
-      "bad",
-      "sad",
-      "worried",
-      "stress",
-      "tired",
-      "angry",
-    ];
-    const userWords = userInput.toLowerCase().split(" ");
-    const matchedWords = userWords.filter((word) =>
-      lowMoodWords.includes(word)
-    );
-    const newMoodScore = Math.max(moodScore - matchedWords.length * 0.1, 0);
-    setMoodScore(newMoodScore);
+    // API call to Flask backend
+    const response = await fetch("http://localhost:5000/analyze_mood", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_input: userInput }),
+    });
+    const data = await response.json();
+    setMoodScore(data.mood_score);
 
     const botReply = {
       role: "system",
-      content: matchedWords.length
-        ? `I'm sorry to hear that you're feeling ${matchedWords.join(
-            ", "
-          )}. Remember, it's okay to have these feelings. I'm here to support you.`
+      content: data.mood_score < 0.5
+        ? `I'm sorry to hear that you're feeling down. Remember, it's okay to have these feelings. I'm here to support you.`
         : "That's great to hear! How can I assist you further?",
     };
     setChatMessages((prevMessages) => [...prevMessages, botReply]);
