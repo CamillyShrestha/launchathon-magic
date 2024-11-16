@@ -14,6 +14,8 @@ import {
   Frown,
   Meh,
 } from "lucide-react";
+import { Tooltip, TooltipProps, LineChart, CartesianGrid, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { ChartTooltip } from "@/components/ui/chart";
 
 export default function Dashboard() {
   const [patientData, setPatientData] = useState({
@@ -33,21 +35,43 @@ export default function Dashboard() {
   const [moodScore, setMoodScore] = useState(1);
   const [isTextLoading, setIsTextLoading] = useState(false);
 
+  const [riskHistory, setRiskHistory] = useState([
+    { time: '0m', risk: 0.2 },
+    { time: '5m', risk: 0.25 },
+    { time: '10m', risk: 0.22 },
+    { time: '15m', risk: 0.28 },
+    { time: '20m', risk: 0.2 },
+  ])
+
   const predictRisk = async () => {
-    setIsLoading(true);
-    // Simulating API call to Django backend
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Update with new random data for demonstration
-    setPatientData({
+    setIsLoading(true)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const newRisk = Number((Math.random() * 0.5).toFixed(2))
+    setPatientData(prevData => ({
+      ...prevData,
       heartRate: Math.floor(Math.random() * (100 - 60) + 60),
-      bloodPressure: `${Math.floor(
-        Math.random() * (140 - 100) + 100
-      )}/${Math.floor(Math.random() * (90 - 60) + 60)}`,
+      bloodPressure: `${Math.floor(Math.random() * (140 - 100) + 100)}/${Math.floor(Math.random() * (90 - 60) + 60)}`,
       oxygenLevel: Math.floor(Math.random() * (100 - 95) + 95),
       temperature: Number((Math.random() * (37.5 - 36.0) + 36.0).toFixed(1)),
-      withdrawalRisk: Number((Math.random() * 0.5).toFixed(2)),
-    });
-    setIsLoading(false);
+      withdrawalRisk: newRisk
+    }))
+    setRiskHistory(prevHistory => [
+      ...prevHistory.slice(1),
+      { time: `${prevHistory.length * 5}m`, risk: newRisk }
+    ])
+    setIsLoading(false)
+  }
+
+  const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ active, payload, label })  => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/10 backdrop-blur-lg p-2 rounded">
+          <p className="label">{`Time: ${label}`}</p>
+          <p className="data">{`Risk: ${payload[0]?.value ? (payload[0].value * 100).toFixed(1) : 'N/A'}%`}</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   const sendMessage = async () => {
@@ -161,7 +185,7 @@ rounded-xl"
             </div>
             {/* Withdrawal Risk */}
             <Card
-              className="bg-white/10 backdrop-blur-lg border-gray-400 text-white 
+              className="bg-white/10 backdrop-blur-lg border-gray-400 text-black 
 hover:bg-white/20 transition-all duration-300
 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]
 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]
@@ -177,11 +201,16 @@ rounded-xl"
                 <div className="text-5xl font-bold text-stone-800 text-center mb-4">
                   {(patientData.withdrawalRisk * 100).toFixed(1)}%
                 </div>
-                <div className="w-full bg-white/30 rounded-full h-4">
-                  <div
-                    className="bg-gradient-to-r from-orange-200 via-orange-300 to-orange-500 h-4 rounded-full transition-all duration-500 ease-in-out"
-                    style={{ width: `${patientData.withdrawalRisk * 100}%` }}
-                  ></div>
+                <div className="h-[200px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={riskHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis dataKey="time" stroke="rgba(0,0,0,0.5)" />
+                      <YAxis stroke="rgba(0,0,0,0.5)" domain={[0, 0.5]} tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line type="monotone" dataKey="risk" stroke="#8884d8" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
