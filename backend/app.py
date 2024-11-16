@@ -6,12 +6,12 @@ import openai
 import nltk
 from nltk.tokenize import word_tokenize
 import re
+import os
 
 # Load the pre-trained withdrawal risk model
 model = joblib.load('rm.pkl')
-
-# Set up OpenAI API key
-openai.api_key = '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'
+# Load OpenAI API key from .env
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Initialize NLTK
 nltk.download('punkt')
